@@ -1,4 +1,6 @@
 homepage: "https://gtm-server.com/"
 versions:
+  - sha: 9fe6119502f77c6b35a6f1aeb5c08a74b9f24c84
+    changeNotes: Fixed issue with token encoding.
   - sha: d6878f7d40d60d86d26620c2db22b33e4f0039f8
     changeNotes: Initial release.
