@@ -80,7 +80,7 @@ ___SANDBOXED_JS_FOR_SERVER___
 const sendHttpRequest = require('sendHttpRequest');
 const encodeUriComponent = require('encodeUriComponent');
 
-const url = 'https://api.telegram.org/bot'+data.token+'/sendMessage?chat_id='+encodeUriComponent(data.channel)+'&text='+encodeUriComponent(data.text);
+const url = 'https://api.telegram.org/bot'+encodeUriComponent(data.token)+'/sendMessage?chat_id='+encodeUriComponent(data.channel)+'&text='+encodeUriComponent(data.text);
 
 sendHttpRequest(url, (statusCode, headers, body) => {
   if (statusCode >= 200 && statusCode < 300) {
