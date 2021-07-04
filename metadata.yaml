@@ -1,5 +1,7 @@
 homepage: "https://stape.io/"
 versions:
+  - sha: 6594434f893859d953fab2ae14f6d0e319e92ab0
+    changeNotes: Move to Stape.
   - sha: 9fe6119502f77c6b35a6f1aeb5c08a74b9f24c84
     changeNotes: Fixed issue with token encoding.
   - sha: d6878f7d40d60d86d26620c2db22b33e4f0039f8
