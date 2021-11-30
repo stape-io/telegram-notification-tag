@@ -50,12 +50,6 @@ ___TEMPLATE_PARAMETERS___
     "valueValidators": [
       {
         "type": "NON_EMPTY"
-      },
-      {
-        "type": "REGEX",
-        "args": [
-          "^@.*"
-        ]
       }
     ],
     "help": "Set \u003ca href\u003d\"https://telegram.org/faq_channels\" target\u003d\"_blank\"\u003echannel\u003c/a\u003e to where notification will come. For example: \u003cb\u003e@gtm_server\u003c/b\u003e"
