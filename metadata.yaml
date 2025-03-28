@@ -1,5 +1,7 @@
 homepage: "https://stape.io/"
 versions:
+  - sha: 6b159f60863518ba19ba4121519981b23e77d1f2
+    changeNotes: Add support for markdown and HTML. Add support for line breaks. Add tests.
   - sha: 00e5c4ffe1477a636c0c4b8727ba8d7bafb89b02
     changeNotes: Fix validation of chanel_id.
   - sha: 6594434f893859d953fab2ae14f6d0e319e92ab0
