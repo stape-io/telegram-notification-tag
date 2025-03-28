@@ -14,7 +14,9 @@ ___INFO___
   "version": 1,
   "securityGroups": [],
   "displayName": "Telegram Notification",
-  "categories": ["UTILITY"],
+  "categories": [
+    "UTILITY"
+  ],
   "brand": {
     "id": "brand_dummy",
     "displayName": "Stape",
@@ -55,14 +57,68 @@ ___TEMPLATE_PARAMETERS___
     "help": "Set \u003ca href\u003d\"https://telegram.org/faq_channels\" target\u003d\"_blank\"\u003echannel\u003c/a\u003e to where notification will come. For example: \u003cb\u003e@gtm_server\u003c/b\u003e"
   },
   {
+    "type": "SELECT",
+    "name": "parseMode",
+    "displayName": "Notification Text Formatting",
+    "macrosInSelect": false,
+    "selectItems": [
+      {
+        "value": "MarkdownV2",
+        "displayValue": "Markdown"
+      },
+      {
+        "value": "HTML",
+        "displayValue": "HTML"
+      }
+    ],
+    "simpleValueType": true,
+    "help": "\u003ca href\u003d\"https://core.telegram.org/bots/api#formatting-options\"\u003eRead more\u003c/a\u003e about Telegram\u0027s markdown and HTML formatting rules.\u003cbr/\u003eIf not set, it will be treated as \u003cb\u003eplain text\u003c/b\u003e.",
+    "notSetText": "(not set)"
+  },
+  {
     "type": "TEXT",
     "name": "text",
     "displayName": "Notification Text",
     "simpleValueType": true,
-    "help": "Text that will be sent to Telegram. You can use your \u003cb\u003eVariables\u003c/b\u003e in this field. More info about Telegram text formatting can be \u003ca href\u003d\"https://core.telegram.org/bots/api#formatting-options\" target\u003d\"_blank\"\u003efound here\u003c/a\u003e.\nExample of the text:  Your {{Event Name}} triggered.",
+    "help": "Text that will be sent to Telegram. You can use your \u003cb\u003eVariables\u003c/b\u003e in this field. More info about Telegram text formatting can be \u003ca href\u003d\"https://core.telegram.org/bots/api#formatting-options\" target\u003d\"_blank\"\u003efound here\u003c/a\u003e.\u003cbr/\u003eExample of the text:  \u003ci\u003eYour {{Event Name}} triggered.\u003c/i\u003e\n\u003cbr/\u003e\u003cbr/\u003e\nTo add line breaks, simply use \u003ci\u003e\\n\u003c/i\u003e.\n\u003cbr/\u003e\nExample:\n\u003cbr/\u003e\n\u003cul\u003e\u003cli\u003e\n\u003ci\u003eYour {{Event Name}} triggered.\\nDate: 31/01/2025.\u003c/i\u003e\n\u003c/ul\u003e\u003c/li\u003e\n\u003cbr/\u003e\nThis will be rendered as: \n\u003cul\u003e\u003cli\u003e\n\u003ci\u003eYour {{Event Name}} triggered.\u003cbr/\u003eDate: 31/01/2025.\u003c/i\u003e\n\u003c/ul\u003e\u003c/li\u003e",
     "valueValidators": [
       {
         "type": "NON_EMPTY"
+      }
+    ]
+  },
+  {
+    "type": "CHECKBOX",
+    "name": "useOptimisticScenario",
+    "checkboxText": "Use Optimistic Scenario",
+    "simpleValueType": true,
+    "help": "The tag will call gtmOnSuccess() without waiting for a response from the API. This will speed up sGTM response time however your tag will always return the status fired successfully even in case it is not."
+  },
+  {
+    "type": "GROUP",
+    "name": "logsGroup",
+    "displayName": "Logs Settings",
+    "groupStyle": "ZIPPY_CLOSED",
+    "subParams": [
+      {
+        "type": "RADIO",
+        "name": "logType",
+        "radioItems": [
+          {
+            "value": "no",
+            "displayValue": "Do not log"
+          },
+          {
+            "value": "debug",
+            "displayValue": "Log to console during debug and preview"
+          },
+          {
+            "value": "always",
+            "displayValue": "Always log to console"
+          }
+        ],
+        "simpleValueType": true,
+        "defaultValue": "debug"
       }
     ]
   }
@@ -73,16 +129,93 @@ ___SANDBOXED_JS_FOR_SERVER___
 
 const sendHttpRequest = require('sendHttpRequest');
 const encodeUriComponent = require('encodeUriComponent');
+const getRequestHeader = require('getRequestHeader');
+const getContainerVersion = require('getContainerVersion');
+const logToConsole = require('logToConsole');
+const JSON = require('JSON');
 
-const url = 'https://api.telegram.org/bot'+encodeUriComponent(data.token)+'/sendMessage?chat_id='+encodeUriComponent(data.channel)+'&text='+encodeUriComponent(data.text);
+/**********************************************************************************************/
 
-sendHttpRequest(url, (statusCode, headers, body) => {
-  if (statusCode >= 200 && statusCode < 300) {
-    data.gtmOnSuccess();
-  } else {
-    data.gtmOnFailure();
+const isLoggingEnabled = determinateIsLoggingEnabled();
+const traceId = isLoggingEnabled ? getRequestHeader('trace-id') : undefined;
+
+// Ref: https://core.telegram.org/bots/api
+
+// Support for line breaks.
+// GTM adds an extra backslash character to '\n' -> '\\n'. We have to change it back to just '\n'.
+const text = data.text.split('\\n').join('\n');
+
+let url = 'https://api.telegram.org/bot' + encodeUriComponent(data.token) + '/sendMessage';
+url += '?chat_id=' + encodeUriComponent(data.channel);
+url += data.parseMode ? '&parse_mode=' + data.parseMode : '';
+url += '&text=' + encodeUriComponent(text);
+
+log({
+  Name: 'Telegram Notification',
+  Type: 'Request',
+  TraceId: traceId,
+  EventName: 'notification',
+  RequestMethod: 'GET',
+  RequestUrl: url
+});
+
+sendHttpRequest(
+  url,
+  (statusCode, headers, body) => {
+    log({
+      Name: 'Telegram Notification',
+      Type: 'Response',
+      TraceId: traceId,
+      EventName: 'notification',
+      ResponseStatusCode: statusCode,
+      ResponseHeaders: headers,
+      ResponseBody: body
+    });
+
+    if (!data.useOptimisticScenario) {
+      if (statusCode >= 200 && statusCode < 300) {
+        data.gtmOnSuccess();
+      } else {
+        data.gtmOnFailure();
+      }
+    }
+  },
+  { method: 'GET', timeout: 3000 }
+);
+
+if (data.useOptimisticScenario) {
+  data.gtmOnSuccess();
+}
+
+/**********************************************************************************************/
+// Helpers
+
+function log(logObject) {
+  if (!isLoggingEnabled) return;
+  logToConsole(JSON.stringify(logObject));
+}
+
+function determinateIsLoggingEnabled() {
+  const containerVersion = getContainerVersion();
+  const isDebug = !!(
+    containerVersion &&
+    (containerVersion.debugMode || containerVersion.previewMode)
+  );
+
+  if (!data.logType) {
+    return isDebug;
   }
-}, {method: 'GET', timeout: 3000});
+
+  if (data.logType === 'no') {
+    return false;
+  }
+
+  if (data.logType === 'debug') {
+    return isDebug;
+  }
+
+  return data.logType === 'always';
+}
 
 
 ___SERVER_PERMISSIONS___
@@ -120,15 +253,158 @@ ___SERVER_PERMISSIONS___
       "isEditedByUser": true
     },
     "isRequired": true
+  },
+  {
+    "instance": {
+      "key": {
+        "publicId": "logging",
+        "versionId": "1"
+      },
+      "param": [
+        {
+          "key": "environments",
+          "value": {
+            "type": 1,
+            "string": "all"
+          }
+        }
+      ]
+    },
+    "clientAnnotations": {
+      "isEditedByUser": true
+    },
+    "isRequired": true
+  },
+  {
+    "instance": {
+      "key": {
+        "publicId": "read_request",
+        "versionId": "1"
+      },
+      "param": [
+        {
+          "key": "headerWhitelist",
+          "value": {
+            "type": 2,
+            "listItem": [
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "headerName"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "trace-id"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "key": "headersAllowed",
+          "value": {
+            "type": 8,
+            "boolean": true
+          }
+        },
+        {
+          "key": "requestAccess",
+          "value": {
+            "type": 1,
+            "string": "specific"
+          }
+        },
+        {
+          "key": "headerAccess",
+          "value": {
+            "type": 1,
+            "string": "specific"
+          }
+        },
+        {
+          "key": "queryParameterAccess",
+          "value": {
+            "type": 1,
+            "string": "any"
+          }
+        }
+      ]
+    },
+    "clientAnnotations": {
+      "isEditedByUser": true
+    },
+    "isRequired": true
+  },
+  {
+    "instance": {
+      "key": {
+        "publicId": "read_container_data",
+        "versionId": "1"
+      },
+      "param": []
+    },
+    "isRequired": true
   }
 ]
 
 
 ___TESTS___
 
-scenarios: []
+scenarios:
+- name: Request is made but fails - onGtmFailure
+  code: "mockData.text = '![👍](tg://emoji?id=5368324170671202286)'.split('\\\\n').join('\\\
+    n');\n\nconst expectedRequestUrl = 'https://api.telegram.org/bot' + encodeUriComponent(mockData.token)\
+    \ + \n      '/sendMessage?chat_id=' + encodeUriComponent(mockData.channel) +\n\
+    \      '&text=' + encodeUriComponent(mockData.text);\n\nmock('sendHttpRequest',\
+    \ (url, callback, options, body) => {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n\
+    \  assertThat(callback).isFunction();\n  assertThat(options).isEqualTo(expectedRequestOptions);\n\
+    \  callback(500);\n});\n\nrunCode(mockData);\n\nassertApi('gtmOnFailure').wasCalled();\n\
+    assertApi('gtmOnSuccess').wasNotCalled();"
+- name: Plain text - onGtmSuccess
+  code: "mockData.parseMode = undefined;\n\nconst expectedRequestUrl = 'https://api.telegram.org/bot'\
+    \ + encodeUriComponent(mockData.token) + \n      '/sendMessage?chat_id=' + encodeUriComponent(mockData.channel)\
+    \ +\n      '&text=' + encodeUriComponent(mockData.text);\n\nmock('sendHttpRequest',\
+    \ (url, callback, options, body) => {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n\
+    \  assertThat(callback).isFunction();\n  assertThat(options).isEqualTo(expectedRequestOptions);\n\
+    \  callback(200);\n});\n\nrunCode(mockData);\n\nassertApi('gtmOnSuccess').wasCalled();\n\
+    assertApi('gtmOnFailure').wasNotCalled();"
+- name: Markdown - onGtmSuccess
+  code: "mockData.parseMode = 'MarkdownV2';\n\nconst expectedRequestUrl = 'https://api.telegram.org/bot'\
+    \ + encodeUriComponent(mockData.token) + \n      '/sendMessage?chat_id=' + encodeUriComponent(mockData.channel)\
+    \ +\n      '&parse_mode=' + encodeUriComponent(mockData.parseMode) +\n      '&text='\
+    \ + encodeUriComponent(mockData.text);\n\nmock('sendHttpRequest', (url, callback,\
+    \ options, body) => {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n  assertThat(callback).isFunction();\n\
+    \  assertThat(options).isEqualTo(expectedRequestOptions);\n  callback(200);\n\
+    });\n\nrunCode(mockData);\n\nassertApi('gtmOnSuccess').wasCalled();\nassertApi('gtmOnFailure').wasNotCalled();"
+- name: HTML - onGtmSuccess
+  code: "mockData.parseMode = 'HTML';\n\nconst expectedRequestUrl = 'https://api.telegram.org/bot'\
+    \ + encodeUriComponent(mockData.token) + \n      '/sendMessage?chat_id=' + encodeUriComponent(mockData.channel)\
+    \ +\n      '&parse_mode=' + encodeUriComponent(mockData.parseMode) +\n      '&text='\
+    \ + encodeUriComponent(mockData.text);\n\nmock('sendHttpRequest', (url, callback,\
+    \ options, body) => {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n  assertThat(callback).isFunction();\n\
+    \  assertThat(options).isEqualTo(expectedRequestOptions);\n  callback(200);\n\
+    });\n\nrunCode(mockData);\n\nassertApi('gtmOnSuccess').wasCalled();\nassertApi('gtmOnFailure').wasNotCalled();"
+setup: |-
+  const encodeUriComponent = require('encodeUriComponent');
+
+  const expectedValue = 'test';
+
+  const expectedRequestOptions = { method: 'GET', timeout: 3000 };
+
+  const mockData = {
+    useOptimisticScenario: false,
+    channel: '@' + expectedValue,
+    token: expectedValue,
+    text: 'Foo bar \n Foo *test*\\n<b> \\n #test\ntest'.split('\\n').join('\n')
+  };
 
 
 ___NOTES___
 
 Created on 31/03/2021, 18:23:58
+
