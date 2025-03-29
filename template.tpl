@@ -357,35 +357,33 @@ ___TESTS___
 
 scenarios:
 - name: Request is made but fails - onGtmFailure
-  code: "const expectedRequestUrl = 'https://api.telegram.org/bot' + encodeUriComponent(mockData.token)\
-    \ + \n      '/sendMessage?chat_id=' + encodeUriComponent(mockData.channel) +\n\
-    \      '&text=' + encodeUriComponent(expectedText);\n\nmock('sendHttpRequest',\
-    \ (url, callback, options, body) => {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n\
+  code: "const expectedRequestUrl = 'https://api.telegram.org/bot' + expectedBotToken\
+    \ + \n      '/sendMessage?chat_id=' + expectedChatId +\n      '&text=' + expectedText;\n\
+    \nmock('sendHttpRequest', (url, callback, options, body) => {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n\
     \  assertThat(callback).isFunction();\n  assertThat(options).isEqualTo(expectedRequestOptions);\n\
     \  callback(500);\n});\n\nrunCode(mockData);\n\nassertApi('gtmOnFailure').wasCalled();\n\
     assertApi('gtmOnSuccess').wasNotCalled();"
 - name: Plain text - onGtmSuccess
   code: "mockData.parseMode = undefined;\n\nconst expectedRequestUrl = 'https://api.telegram.org/bot'\
-    \ + encodeUriComponent(mockData.token) + \n      '/sendMessage?chat_id=' + encodeUriComponent(mockData.channel)\
-    \ +\n      '&text=' + encodeUriComponent(expectedText);\n\nmock('sendHttpRequest',\
-    \ (url, callback, options, body) => {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n\
-    \  assertThat(callback).isFunction();\n  assertThat(options).isEqualTo(expectedRequestOptions);\n\
-    \  callback(200);\n});\n\nrunCode(mockData);\n\nassertApi('gtmOnSuccess').wasCalled();\n\
-    assertApi('gtmOnFailure').wasNotCalled();"
+    \ + expectedBotToken + \n      '/sendMessage?chat_id=' + expectedChatId +\n  \
+    \    '&text=' + expectedText;\n\nmock('sendHttpRequest', (url, callback, options,\
+    \ body) => {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n  assertThat(callback).isFunction();\n\
+    \  assertThat(options).isEqualTo(expectedRequestOptions);\n  callback(200);\n\
+    });\n\nrunCode(mockData);\n\nassertApi('gtmOnSuccess').wasCalled();\nassertApi('gtmOnFailure').wasNotCalled();"
 - name: Markdown - onGtmSuccess
   code: "mockData.parseMode = 'MarkdownV2';\n\nconst expectedRequestUrl = 'https://api.telegram.org/bot'\
-    \ + encodeUriComponent(mockData.token) + \n      '/sendMessage?chat_id=' + encodeUriComponent(mockData.channel)\
-    \ +\n      '&parse_mode=' + encodeUriComponent(mockData.parseMode) +\n      '&text='\
-    \ + encodeUriComponent(expectedText);\n\nmock('sendHttpRequest', (url, callback,\
-    \ options, body) => {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n  assertThat(callback).isFunction();\n\
+    \ + expectedBotToken + \n      '/sendMessage?chat_id=' + expectedChatId +\n  \
+    \    '&parse_mode=' + encodeUriComponent(mockData.parseMode) +\n      '&text='\
+    \ + expectedText;\n\nmock('sendHttpRequest', (url, callback, options, body) =>\
+    \ {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n  assertThat(callback).isFunction();\n\
     \  assertThat(options).isEqualTo(expectedRequestOptions);\n  callback(200);\n\
     });\n\nrunCode(mockData);\n\nassertApi('gtmOnSuccess').wasCalled();\nassertApi('gtmOnFailure').wasNotCalled();"
 - name: HTML - onGtmSuccess
   code: "mockData.parseMode = 'HTML';\n\nconst expectedRequestUrl = 'https://api.telegram.org/bot'\
-    \ + encodeUriComponent(mockData.token) + \n      '/sendMessage?chat_id=' + encodeUriComponent(mockData.channel)\
-    \ +\n      '&parse_mode=' + encodeUriComponent(mockData.parseMode) +\n      '&text='\
-    \ + encodeUriComponent(expectedText);\n\nmock('sendHttpRequest', (url, callback,\
-    \ options, body) => {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n  assertThat(callback).isFunction();\n\
+    \ + expectedBotToken + \n      '/sendMessage?chat_id=' + expectedChatId +\n  \
+    \    '&parse_mode=' + encodeUriComponent(mockData.parseMode) +\n      '&text='\
+    \ + expectedText;\n\nmock('sendHttpRequest', (url, callback, options, body) =>\
+    \ {\n  assertThat(url).isEqualTo(expectedRequestUrl);\n  assertThat(callback).isFunction();\n\
     \  assertThat(options).isEqualTo(expectedRequestOptions);\n  callback(200);\n\
     });\n\nrunCode(mockData);\n\nassertApi('gtmOnSuccess').wasCalled();\nassertApi('gtmOnFailure').wasNotCalled();"
 setup: |-
@@ -402,7 +400,9 @@ setup: |-
     text: 'Foo bar \n Foo *test*\\n<b>test</b> \\n #test\ntest ![👍](tg://emoji?id=5368324170671202286)'
   };
 
-  const expectedText = mockData.text.split('\\n').join('\n');
+  const expectedBotToken = encodeUriComponent(mockData.token);
+  const expectedChatId = encodeUriComponent(mockData.channel);
+  const expectedText = encodeUriComponent(mockData.text.split('\\n').join('\n'));
 
 
 ___NOTES___
