@@ -1,5 +1,7 @@
 homepage: "https://stape.io/"
 versions:
+  - sha: 81c412432686c18afead577113058d19b75b441d
+    changeNotes: Improve tests.
   - sha: 2d62c5a9bdbacd27bade5d8af611ecbc8aa1a378
     changeNotes: Add support for markdown and HTML. Add support for line breaks. Add tests.
   - sha: 00e5c4ffe1477a636c0c4b8727ba8d7bafb89b02
