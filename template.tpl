@@ -93,128 +93,40 @@ ___TEMPLATE_PARAMETERS___
     "checkboxText": "Use Optimistic Scenario",
     "simpleValueType": true,
     "help": "The tag will call gtmOnSuccess() without waiting for a response from the API. This will speed up sGTM response time however your tag will always return the status fired successfully even in case it is not."
-  },
-  {
-    "type": "GROUP",
-    "name": "logsGroup",
-    "displayName": "Logs Settings",
-    "groupStyle": "ZIPPY_CLOSED",
-    "subParams": [
-      {
-        "type": "RADIO",
-        "name": "logType",
-        "radioItems": [
-          {
-            "value": "no",
-            "displayValue": "Do not log"
-          },
-          {
-            "value": "debug",
-            "displayValue": "Log to console during debug and preview"
-          },
-          {
-            "value": "always",
-            "displayValue": "Always log to console"
-          }
-        ],
-        "simpleValueType": true,
-        "defaultValue": "debug"
-      }
-    ]
   }
 ]
 
 
 ___SANDBOXED_JS_FOR_SERVER___
 
-const sendHttpRequest = require('sendHttpRequest');
 const encodeUriComponent = require('encodeUriComponent');
-const getRequestHeader = require('getRequestHeader');
-const getContainerVersion = require('getContainerVersion');
-const logToConsole = require('logToConsole');
-const JSON = require('JSON');
+const sendHttpRequest = require('sendHttpRequest');
 
-/**********************************************************************************************/
-
-const isLoggingEnabled = determinateIsLoggingEnabled();
-const traceId = isLoggingEnabled ? getRequestHeader('trace-id') : undefined;
+/*==============================================================================
+==============================================================================*/
 
 // Ref: https://core.telegram.org/bots/api
-
-// Support for line breaks.
-// GTM adds an extra backslash character to '\n' -> '\\n'. We have to change it back to just '\n'.
-const text = data.text.split('\\n').join('\n');
 
 let url = 'https://api.telegram.org/bot' + encodeUriComponent(data.token) + '/sendMessage';
 url += '?chat_id=' + encodeUriComponent(data.channel);
 url += data.parseMode ? '&parse_mode=' + data.parseMode : '';
+// Support for line breaks.
+// GTM adds an extra backslash character to '\n' -> '\\n'. We have to change it back to just '\n'.
+const text = data.text.split('\\n').join('\n');
 url += '&text=' + encodeUriComponent(text);
-
-log({
-  Name: 'Telegram Notification',
-  Type: 'Request',
-  TraceId: traceId,
-  EventName: 'notification',
-  RequestMethod: 'GET',
-  RequestUrl: url
-});
 
 sendHttpRequest(
   url,
   (statusCode, headers, body) => {
-    log({
-      Name: 'Telegram Notification',
-      Type: 'Response',
-      TraceId: traceId,
-      EventName: 'notification',
-      ResponseStatusCode: statusCode,
-      ResponseHeaders: headers,
-      ResponseBody: body
-    });
-
     if (!data.useOptimisticScenario) {
-      if (statusCode >= 200 && statusCode < 300) {
-        data.gtmOnSuccess();
-      } else {
-        data.gtmOnFailure();
-      }
+      return statusCode >= 200 && statusCode < 300 ? data.gtmOnSuccess() : data.gtmOnFailure();
     }
   },
-  { method: 'GET', timeout: 3000 }
+  { method: 'GET' }
 );
 
 if (data.useOptimisticScenario) {
   data.gtmOnSuccess();
-}
-
-/**********************************************************************************************/
-// Helpers
-
-function log(logObject) {
-  if (!isLoggingEnabled) return;
-  logToConsole(JSON.stringify(logObject));
-}
-
-function determinateIsLoggingEnabled() {
-  const containerVersion = getContainerVersion();
-  const isDebug = !!(
-    containerVersion &&
-    (containerVersion.debugMode || containerVersion.previewMode)
-  );
-
-  if (!data.logType) {
-    return isDebug;
-  }
-
-  if (data.logType === 'no') {
-    return false;
-  }
-
-  if (data.logType === 'debug') {
-    return isDebug;
-  }
-
-  return data.logType === 'always';
 }
 
 
@@ -251,102 +163,6 @@ ___SERVER_PERMISSIONS___
     },
     "clientAnnotations": {
       "isEditedByUser": true
-    },
-    "isRequired": true
-  },
-  {
-    "instance": {
-      "key": {
-        "publicId": "logging",
-        "versionId": "1"
-      },
-      "param": [
-        {
-          "key": "environments",
-          "value": {
-            "type": 1,
-            "string": "all"
-          }
-        }
-      ]
-    },
-    "clientAnnotations": {
-      "isEditedByUser": true
-    },
-    "isRequired": true
-  },
-  {
-    "instance": {
-      "key": {
-        "publicId": "read_request",
-        "versionId": "1"
-      },
-      "param": [
-        {
-          "key": "headerWhitelist",
-          "value": {
-            "type": 2,
-            "listItem": [
-              {
-                "type": 3,
-                "mapKey": [
-                  {
-                    "type": 1,
-                    "string": "headerName"
-                  }
-                ],
-                "mapValue": [
-                  {
-                    "type": 1,
-                    "string": "trace-id"
-                  }
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "key": "headersAllowed",
-          "value": {
-            "type": 8,
-            "boolean": true
-          }
-        },
-        {
-          "key": "requestAccess",
-          "value": {
-            "type": 1,
-            "string": "specific"
-          }
-        },
-        {
-          "key": "headerAccess",
-          "value": {
-            "type": 1,
-            "string": "specific"
-          }
-        },
-        {
-          "key": "queryParameterAccess",
-          "value": {
-            "type": 1,
-            "string": "any"
-          }
-        }
-      ]
-    },
-    "clientAnnotations": {
-      "isEditedByUser": true
-    },
-    "isRequired": true
-  },
-  {
-    "instance": {
-      "key": {
-        "publicId": "read_container_data",
-        "versionId": "1"
-      },
-      "param": []
     },
     "isRequired": true
   }
@@ -391,7 +207,7 @@ setup: |-
 
   const expectedValue = 'test';
 
-  const expectedRequestOptions = { method: 'GET', timeout: 3000 };
+  const expectedRequestOptions = { method: 'GET' };
 
   const mockData = {
     useOptimisticScenario: false,
@@ -406,6 +222,9 @@ setup: |-
 
 
 ___NOTES___
+
+2026-05-25 Change Notes:
+ - Logging removal.
 
 Created on 31/03/2021, 18:23:58
 
