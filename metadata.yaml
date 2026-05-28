@@ -1,5 +1,7 @@
 homepage: "https://stape.io/"
 versions:
+  - sha: 19753ebda8632efd0b0581eb144322fc5ee60986
+    changeNotes: Logging removal.
   - sha: 81c412432686c18afead577113058d19b75b441d
     changeNotes: Improve tests.
   - sha: 2d62c5a9bdbacd27bade5d8af611ecbc8aa1a378
