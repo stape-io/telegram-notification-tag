@@ -1,4 +1,5 @@
-homepage: "https://stape.io/"
+homepage: 'https://stape.io/'
+documentation: 'https://github.com/stape-io/telegram-notification-tag'
 versions:
   - sha: 19753ebda8632efd0b0581eb144322fc5ee60986
     changeNotes: Logging removal.
